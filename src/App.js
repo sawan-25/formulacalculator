@@ -1,23 +1,38 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useEffect, useState } from 'react';
+import FormulaInput from './components/FormulaInput';
+import LatexDisplay from './components/LatexDisplay';
+import VariableInputs from './components/VariableInputs';
+import { evaluateExpression } from './utils/expressionEvaluator';
 
 function App() {
+  const [formula, setFormula] = useState('');
+  const [variables, setVariables] = useState([]);
+  const [values, setValues] = useState({});
+  const [result, setResult] = useState('Enter a formula to see the result.');
+
+
+  useEffect(() => {
+    if (formula) {  // Only calculate if there's a formula
+      calculateResult();
+    }
+  }, [values, formula]);  // Add formula as a dependency to recalculate when it changes
+
+
+
+  const calculateResult = () => {
+    const res = evaluateExpression(formula, values);
+    setResult(res);
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="app container mx-auto px-4 py-5">
+      <h1 className="text-3xl text-center font-bold mb-4">Formula Calculator</h1>
+      <LatexDisplay formula={formula} />
+      <FormulaInput formula={formula} setFormula={setFormula} setVariables={setVariables} />
+      <VariableInputs variables={variables} values={values} setValues={setValues} />
+      <div className="result text-lg font-semibold text-green-500 mt-4">
+        Result: {result}
+      </div>
     </div>
   );
 }
