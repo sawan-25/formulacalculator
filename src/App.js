@@ -3,6 +3,7 @@ import FormulaInput from './components/FormulaInput';
 import LatexDisplay from './components/LatexDisplay';
 import VariableInputs from './components/VariableInputs';
 import { evaluateExpression } from './utils/expressionEvaluator';
+import Header from './components/Header';
 
 function App() {
   const [formula, setFormula] = useState('');
@@ -26,7 +27,7 @@ function App() {
 
   return (
     <div className="app container mx-auto px-4 py-5">
-      <h1 className="text-3xl text-center font-bold mb-4">Formula Calculator</h1>
+      <Header/>
       <LatexDisplay formula={formula} />
       <FormulaInput formula={formula} setFormula={setFormula} setVariables={setVariables} />
       <VariableInputs variables={variables} values={values} setValues={setValues} />
