@@ -7,7 +7,7 @@ function FormulaInput({ formula, setFormula, setVariables }) {
 
   useEffect(() => {
     // List of recognized functions
-    const functions = ['sin', 'cos', 'tan', 'sqrt']; // Extend this list as needed
+    const functions = ['sin', 'cos', 'tan', 'sqrt' , 'log']; // Extend this list as needed
 
     // Regular expression to detect tokens (variables and functions)
     const tokens = formula.match(/[a-zA-Z]+/g) || [];
