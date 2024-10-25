@@ -141,7 +141,7 @@ const evaluatePostfix = (postfix, vals) => {
                         stack.push(Math.pow(arg1, 1 / arg2));  // Note: arg1 is the value, arg2 is the degree
                         break;
                     case 'log':
-                        stack.push(Math.log(arg2) / Math.log(arg1));  // Change of base formula
+                        stack.push(Math.log(arg1) / Math.log(arg2));  // Change of base formula
                         break;
                 }
             } else {
