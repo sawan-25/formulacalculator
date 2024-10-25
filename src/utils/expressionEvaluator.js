@@ -42,10 +42,20 @@ const tokenize = (exp) => {
             while (i < exp.length && exp[i].match(/[a-zA-Z]/)) {
                 identifier += exp[i++];
             }
-            if (functions.includes(identifier)) {
-                tokens.push({ type: 'function', name: identifier });
+            // Check for exponent after function name
+            if (i < exp.length && exp[i] === '^') {
+                i++; // Skip '^'
+                let exponent = '';
+                while (i < exp.length && exp[i].match(/[0-9.]/)) {
+                    exponent += exp[i++];
+                }
+                tokens.push({ type: 'function_power', name: identifier, power: parseFloat(exponent) });
             } else {
-                tokens.push({ type: 'variable', value: identifier });
+                if (functions.includes(identifier)) {
+                    tokens.push({ type: 'function', name: identifier });
+                } else {
+                    tokens.push({ type: 'variable', value: identifier });
+                }
             }
         } else if (operators.includes(char)) {
             tokens.push({ type: 'operator', value: char });
@@ -57,7 +67,6 @@ const tokenize = (exp) => {
     return tokens;
 };
 
-// Helper function to convert infix tokens to postfix using Shunting Yard Algorithm
 const infixToPostfix = (tokens) => {
     const outputQueue = [];
     const operatorStack = [];
@@ -68,7 +77,7 @@ const infixToPostfix = (tokens) => {
 
         if (type === 'number' || type === 'variable') {
             outputQueue.push(token);
-        } else if (type === 'function') {
+        } else if (type === 'function' || type === 'function_power') {
             operatorStack.push(token);
         } else if (value === ',') {
             while (operatorStack.length > 0 && operatorStack[operatorStack.length - 1].value !== '(') {
@@ -82,11 +91,13 @@ const infixToPostfix = (tokens) => {
                     outputQueue.push(operatorStack.pop());
                 }
                 operatorStack.pop();  // Pop '('
-                if (operatorStack.length > 0 && operatorStack[operatorStack.length - 1].type === 'function') {
+                if (operatorStack.length > 0 && (operatorStack[operatorStack.length - 1].type === 'function' || operatorStack[operatorStack.length - 1].type === 'function_power')) {
                     outputQueue.push(operatorStack.pop());
                 }
             } else {
-                while (operatorStack.length > 0 && operatorStack[operatorStack.length - 1].type !== 'function' &&
+                while (operatorStack.length > 0 &&
+                    operatorStack[operatorStack.length - 1].type !== 'function' &&
+                    operatorStack[operatorStack.length - 1].type !== 'function_power' &&
                     operatorStack[operatorStack.length - 1].value !== '(' &&
                     ((associativity[value] === 'left' && precedence[value] <= precedence[operatorStack[operatorStack.length - 1].value]) ||
                         (associativity[value] === 'right' && precedence[value] < precedence[operatorStack[operatorStack.length - 1].value]))) {
@@ -104,7 +115,6 @@ const infixToPostfix = (tokens) => {
     return outputQueue;
 };
 
-// Helper function to evaluate the postfix expression
 const evaluatePostfix = (postfix, vals) => {
     const stack = [];
 
@@ -117,58 +127,78 @@ const evaluatePostfix = (postfix, vals) => {
             }
             stack.push(parseFloat(vals[token.value]));
         } else if (token.type === 'function') {
-            if (['sin', 'cos', 'tan', 'sqrt'].includes(token.name) && stack.length >= 1) {
+            if (stack.length >= 1) {
                 const arg = stack.pop();
+                let result;
                 switch (token.name) {
                     case 'sin':
-                        stack.push(Math.sin(arg));
+                        result = Math.sin(arg);
                         break;
                     case 'cos':
-                        stack.push(Math.cos(arg));
+                        result = Math.cos(arg);
                         break;
                     case 'tan':
-                        stack.push(Math.tan(arg));
+                        result = Math.tan(arg);
                         break;
                     case 'sqrt':
-                        stack.push(Math.sqrt(arg));
+                        result = Math.sqrt(arg);
                         break;
+                    default:
+                        throw new Error(`Unknown function '${token.name}'.`);
                 }
-            } else if (['nthroot', 'log'].includes(token.name) && stack.length >= 2) {
-                const arg2 = stack.pop();
-                const arg1 = stack.pop();
-                switch (token.name) {
-                    case 'nthroot':
-                        stack.push(Math.pow(arg1, 1 / arg2));  // Note: arg1 is the value, arg2 is the degree
-                        break;
-                    case 'log':
-                        stack.push(Math.log(arg1) / Math.log(arg2));  // Change of base formula
-                        break;
-                }
+                stack.push(result);
             } else {
-                throw new Error(`Not enough arguments for function '${token.name}' or function is unknown.`);
+                throw new Error(`Not enough arguments for function '${token.name}'.`);
+            }
+        } else if (token.type === 'function_power') {
+            if (stack.length >= 1) {
+                const arg = stack.pop();
+                let funcResult;
+                switch (token.name) {
+                    case 'sin':
+                        funcResult = Math.sin(arg);
+                        break;
+                    case 'cos':
+                        funcResult = Math.cos(arg);
+                        break;
+                    case 'tan':
+                        funcResult = Math.tan(arg);
+                        break;
+                    default:
+                        throw new Error(`Unknown function '${token.name}'.`);
+                }
+                const result = Math.pow(funcResult, token.power);
+                stack.push(result);
+            } else {
+                throw new Error(`Not enough arguments for function '${token.name}' with power.`);
             }
         } else if (token.type === 'operator') {
+            if (stack.length < 2) {
+                throw new Error(`Not enough operands for operator '${token.value}'.`);
+            }
             const b = stack.pop();
             const a = stack.pop();
+            let result;
             switch (token.value) {
                 case '+':
-                    stack.push(a + b);
+                    result = a + b;
                     break;
                 case '-':
-                    stack.push(a - b);
+                    result = a - b;
                     break;
                 case '*':
-                    stack.push(a * b);
+                    result = a * b;
                     break;
                 case '/':
-                    stack.push(a / b);
+                    result = a / b;
                     break;
                 case '^':
-                    stack.push(Math.pow(a, b));
+                    result = Math.pow(a, b);
                     break;
                 default:
                     throw new Error(`Unknown operator '${token.value}'.`);
             }
+            stack.push(result);
         }
     });
 
@@ -184,12 +214,11 @@ export const evaluateExpression = (exp, vals) => {
     if (!exp.trim()) return 'Enter a formula to see the result.';
   
     try {
-      const tokens = tokenize(exp);
-      const postfix = infixToPostfix(tokens);
-      const result = evaluatePostfix(postfix, vals);
-  
-      return result.toString();
+        const tokens = tokenize(exp);
+        const postfix = infixToPostfix(tokens);
+        const result = evaluatePostfix(postfix, vals);
+        return result.toString();
     } catch (error) {
-      return "Invalid formula";
+        return "Invalid formula";
     }
 };
