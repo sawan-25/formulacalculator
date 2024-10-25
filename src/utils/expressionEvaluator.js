@@ -34,6 +34,7 @@ const tokenize = (exp) => {
             }
             tokens.push({ type: 'number', value: parseFloat(num) });
 
+            // Handle implicit multiplication after a number
             if (i < exp.length && (exp[i] === '(' || /[a-zA-Z]/.test(exp[i]))) {
                 tokens.push({ type: 'operator', value: '*' });
             }
@@ -42,20 +43,29 @@ const tokenize = (exp) => {
             while (i < exp.length && exp[i].match(/[a-zA-Z]/)) {
                 identifier += exp[i++];
             }
-            // Check for exponent after function name
+            // Check for exponent after variable or function name
             if (i < exp.length && exp[i] === '^') {
                 i++; // Skip '^'
                 let exponent = '';
                 while (i < exp.length && exp[i].match(/[0-9.]/)) {
                     exponent += exp[i++];
                 }
-                tokens.push({ type: 'function_power', name: identifier, power: parseFloat(exponent) });
+                if (functions.includes(identifier)) {
+                    tokens.push({ type: 'function_power', name: identifier, power: parseFloat(exponent) });
+                } else {
+                    tokens.push({ type: 'variable_power', name: identifier, power: parseFloat(exponent) });
+                }
             } else {
                 if (functions.includes(identifier)) {
                     tokens.push({ type: 'function', name: identifier });
                 } else {
                     tokens.push({ type: 'variable', value: identifier });
                 }
+            }
+
+            // Handle implicit multiplication after a variable
+            if (i < exp.length && (exp[i] === '(' || /[a-zA-Z0-9]/.test(exp[i]))) {
+                tokens.push({ type: 'operator', value: '*' });
             }
         } else if (operators.includes(char)) {
             tokens.push({ type: 'operator', value: char });
@@ -75,7 +85,7 @@ const infixToPostfix = (tokens) => {
         const type = token.type;
         const value = token.value;
 
-        if (type === 'number' || type === 'variable') {
+        if (type === 'number' || type === 'variable' || type === 'variable_power') {
             outputQueue.push(token);
         } else if (type === 'function' || type === 'function_power') {
             operatorStack.push(token);
@@ -126,6 +136,14 @@ const evaluatePostfix = (postfix, vals) => {
                 throw new Error(`Variable '${token.value}' is not defined.`);
             }
             stack.push(parseFloat(vals[token.value]));
+        } else if (token.type === 'variable_power') {
+            // Handle variable raised to a power
+            if (vals[token.name] === undefined) {
+                throw new Error(`Variable '${token.name}' is not defined.`);
+            }
+            const base = parseFloat(vals[token.name]);
+            const result = Math.pow(base, token.power);
+            stack.push(result);
         } else if (token.type === 'function') {
             if (stack.length >= 1) {
                 const arg = stack.pop();
